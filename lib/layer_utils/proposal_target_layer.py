@@ -41,18 +41,20 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, _num_classes):
 
   # Sample rois with classification labels and bounding box regression
   # targets
-  labels, rois, roi_scores, bbox_targets, bbox_inside_weights = _sample_rois(
+  labels, rois, roi_scores, bbox_targets, bbox_inside_weights, keep_inds = _sample_rois(
     all_rois, all_scores, gt_boxes, fg_rois_per_image,
     rois_per_image, _num_classes)
 
+  print('rois shape before', rois.shape)
   rois = rois.reshape(-1, 5)
+  print('rois shape after', rois.shape)
   roi_scores = roi_scores.reshape(-1)
   labels = labels.reshape(-1, 1)
   bbox_targets = bbox_targets.reshape(-1, _num_classes * 4)
   bbox_inside_weights = bbox_inside_weights.reshape(-1, _num_classes * 4)
   bbox_outside_weights = np.array(bbox_inside_weights > 0).astype(np.float32)
 
-  return rois, roi_scores, labels, bbox_targets, bbox_inside_weights, bbox_outside_weights
+  return rois, roi_scores, labels, bbox_targets, bbox_inside_weights, bbox_outside_weights, keep_inds
 
 
 def _get_bbox_regression_labels(bbox_target_data, num_classes):
@@ -149,4 +151,4 @@ def _sample_rois(all_rois, all_scores, gt_boxes, fg_rois_per_image, rois_per_ima
   bbox_targets, bbox_inside_weights = \
     _get_bbox_regression_labels(bbox_target_data, num_classes)
 
-  return labels, rois, roi_scores, bbox_targets, bbox_inside_weights
+  return labels, rois, roi_scores, bbox_targets, bbox_inside_weights, keep_inds

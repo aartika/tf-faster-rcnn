@@ -184,10 +184,10 @@ class Network(object):
 
   def _proposal_target_layer(self, rois, roi_scores, name):
     with tf.variable_scope(name) as scope:
-      rois, roi_scores, labels, bbox_targets, bbox_inside_weights, bbox_outside_weights = tf.py_func(
+      rois, roi_scores, labels, bbox_targets, bbox_inside_weights, bbox_outside_weights, keep_inds = tf.py_func(
         proposal_target_layer,
         [rois, roi_scores, self._gt_boxes, self._num_classes],
-        [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32],
+        [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.int64],
         name="proposal_target")
 
       rois.set_shape([cfg.TRAIN.BATCH_SIZE, 5])
@@ -205,7 +205,7 @@ class Network(object):
 
       self._score_summaries.update(self._proposal_targets)
 
-      return rois, roi_scores
+      return rois, roi_scores, keep_inds
 
   def _anchor_component(self):
     with tf.variable_scope('ANCHOR_' + self._tag) as scope:
@@ -244,17 +244,22 @@ class Network(object):
       # build the anchors for the image
       self._anchor_component()
       # region proposal network
-      rois = self._region_proposal(net_conv, is_training, initializer)
+      rois, all_rois, keep_inds = self._region_proposal(net_conv, is_training, initializer)
       # region of interest pooling
       if cfg.POOLING_MODE == 'crop':
-        pool5 = self._crop_pool_layer(net_conv, rois, "pool5")
+        pool5 = self._crop_pool_layer(net_conv, all_rois, "pool5")
+        #pool_5_all_rois = self._crop_pool_layer(net_conv, all_rois, "pool5")
       else:
         raise NotImplementedError
 
     fc7 = self._head_to_tail(pool5, is_training)
+    #fc7_all = self._head_to_tail(pool_5_all_rois, is_training)
     with tf.variable_scope(self._scope, self._scope):
       # region classification
-      cls_prob, bbox_pred = self._region_classification(fc7, is_training, 
+      fc7_sample = tf.gather(fc7, keep_inds, axis=0)
+      fc7_sample.set_shape([keep_inds.shape[0], fc7.shape[1]])
+      image_cls_score = self._image_level_classification(fc7, is_training, initializer)
+      cls_prob, bbox_pred = self._region_classification(fc7_sample, is_training, 
                                                         initializer, initializer_bbox)
 
     self._score_summaries.update(self._predictions)
@@ -307,12 +312,24 @@ class Network(object):
       bbox_outside_weights = self._proposal_targets['bbox_outside_weights']
       loss_box = self._smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_weights)
 
+      # WSDDN image level classification loss
+      image_cls_score = self._predictions['image_level_cls_score']
+      #image_cls_score = np.zeros(self._num_classes)
+      image_cls = self._gt_boxes[:, 4]
+      image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
+      image_cls_target = np.zeros(self._num_classes)
+      image_cls_target[:] = 1
+
+      image_cls_loss = tf.reduce_mean(tf.log(image_cls_target * (image_cls_score - 0.5) + 0.5))
+      image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
+
       self._losses['cross_entropy'] = cross_entropy
       self._losses['loss_box'] = loss_box
       self._losses['rpn_cross_entropy'] = rpn_cross_entropy
       self._losses['rpn_loss_box'] = rpn_loss_box
+      self._losses['image_cls_loss'] = image_cls_loss
 
-      loss = cross_entropy + loss_box + rpn_cross_entropy + rpn_loss_box
+      loss = cross_entropy + loss_box + rpn_cross_entropy + rpn_loss_box + image_cls_loss
       regularization_loss = tf.add_n(tf.losses.get_regularization_losses(), 'regu')
       self._losses['total_loss'] = loss + regularization_loss
 
@@ -336,11 +353,13 @@ class Network(object):
                                 weights_initializer=initializer,
                                 padding='VALID', activation_fn=None, scope='rpn_bbox_pred')
     if is_training:
-      rois, roi_scores = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
+      all_rois, all_roi_scores = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
+      all_rois = tf.Print(all_rois, ['all_rois shape', tf.shape(all_rois)])
       rpn_labels = self._anchor_target_layer(rpn_cls_score, "anchor")
       # Try to have a deterministic order for the computing graph, for reproducibility
       with tf.control_dependencies([rpn_labels]):
-        rois, _ = self._proposal_target_layer(rois, roi_scores, "rpn_rois")
+        rois, roi_scores, keep_inds = self._proposal_target_layer(all_rois, all_roi_scores, "rpn_rois")
+        rois = tf.Print(rois, ['rois shape', tf.shape(all_rois)])
     else:
       if cfg.TEST.MODE == 'nms':
         rois, _ = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
@@ -356,19 +375,66 @@ class Network(object):
     self._predictions["rpn_bbox_pred"] = rpn_bbox_pred
     self._predictions["rois"] = rois
 
-    return rois
+    return rois, all_rois, keep_inds
 
-  def _region_classification(self, fc7, is_training, initializer, initializer_bbox):
+  def _image_level_classification(self, fc7, is_training, initializer):
     cls_score = slim.fully_connected(fc7, self._num_classes, 
                                        weights_initializer=initializer,
                                        trainable=is_training,
-                                       activation_fn=None, scope='cls_score')
+                                       activation_fn=None, scope='img_cls_score')
+    cls_prob = tf.nn.softmax(cls_score, axis=1, name="cls_prob")
+    region_score = slim.fully_connected(fc7, self._num_classes, 
+                                       weights_initializer=initializer,
+                                       trainable=is_training,
+                                       activation_fn=None, scope='img_region_score')
+    region_prob = tf.nn.softmax(region_score, axis=0, name="cls_prob")
+
+    prod = cls_prob * region_prob
+    image_cls_score = tf.reduce_sum(prod, axis=0)
+    #image_cls_score = tf.Print(image_cls_score, ['image_cls_score', tf.shape(image_cls_score)])
+ 
+    self._predictions["image_level_cls_score"] = image_cls_score 
+
+    return image_cls_score 
+
+  def _region_classification(self, fc7, is_training, initializer, initializer_bbox):
+    img_cls_score_weights = [v for v in tf.trainable_variables() if "img_cls_score/weights" in v.name][0]
+    img_region_score_weights = [v for v in tf.trainable_variables() if "img_region_score/weights" in v.name][0]
+    img_cls_score_weights = tf.stop_gradient(img_cls_score_weights)
+    img_region_score_weights = tf.stop_gradient(img_region_score_weights)
+    img_cls_score_weights = tf.reshape(img_cls_score_weights, [1, tf.size(img_cls_score_weights)])
+    img_region_score_weights = tf.reshape(img_region_score_weights, [1, tf.size(img_region_score_weights)])
+    img_cls_weights = tf.concat([img_cls_score_weights, img_region_score_weights], axis=0)
+    cls_score_weights = slim.fully_connected(img_cls_score_weights, 
+                                        4096*self._num_classes, 
+                                        #weights_initializer=initializer,
+                                        trainable=is_training,
+                                        activation_fn=None, scope='tranfer_fn_cls')
+    cls_score_weights = tf.reshape(cls_score_weights, [4096, self._num_classes])
+    cls_score = tf.matmul(fc7, cls_score_weights)
+
+    # cls score old
+    #cls_score = slim.fully_connected(fc7, self._num_classes, 
+    #                                   weights_initializer=initializer,
+    #                                   trainable=is_training,
+    #                                   activation_fn=None, scope='cls_score')
+    
     cls_prob = self._softmax_layer(cls_score, "cls_prob")
     cls_pred = tf.argmax(cls_score, axis=1, name="cls_pred")
-    bbox_pred = slim.fully_connected(fc7, self._num_classes * 4, 
-                                     weights_initializer=initializer_bbox,
-                                     trainable=is_training,
-                                     activation_fn=None, scope='bbox_pred')
+
+    bbox_pred_weights = slim.fully_connected(img_cls_score_weights, 
+                                        4096*self._num_classes*4, 
+                                        #weights_initializer=initializer,
+                                        trainable=is_training,
+                                        activation_fn=None, scope='tranfer_fn_bbox')
+    bbox_pred_weights = tf.reshape(bbox_pred_weights, [4096, self._num_classes*4])
+    bbox_pred = tf.matmul(fc7, bbox_pred_weights)
+
+    # bbox pred old
+    #bbox_pred = slim.fully_connected(fc7, self._num_classes * 4, 
+    #                                 weights_initializer=initializer_bbox,
+    #                                 trainable=is_training,
+    #                                 activation_fn=None, scope='bbox_pred')
 
     self._predictions["cls_score"] = cls_score
     self._predictions["cls_pred"] = cls_pred

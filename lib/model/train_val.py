@@ -129,11 +129,14 @@ class SolverWrapper(object):
 
       # Compute the gradients with regard to the loss
       gvs = self.optimizer.compute_gradients(loss)
+      #gvs = tf.Print(gvs, ['gvs', gvs])
       # Double the gradient of the bias if set
       if cfg.TRAIN.DOUBLE_BIAS:
         final_gvs = []
         with tf.variable_scope('Gradient_Mult') as scope:
           for grad, var in gvs:
+            #var = tf.Print(var, ['var', var])
+            #grad = tf.Print(grad, ['grad', grad])
             scale = 1.
             if cfg.TRAIN.DOUBLE_BIAS and '/biases:' in var.name:
               scale *= 2.
@@ -181,8 +184,11 @@ class SolverWrapper(object):
     # Fresh train directly from ImageNet weights
     print('Loading initial model weights from {:s}'.format(self.pretrained_model))
     variables = tf.global_variables()
+    print('Loaded.')
     # Initialize all variables first
+    print('Initializing variables...')
     sess.run(tf.variables_initializer(variables, name='init'))
+    print('Initialized variables.')
     var_keep_dic = self.get_variables_in_checkpoint_file(self.pretrained_model)
     # Get the variables to restore, ignoring the variables to fix
     variables_to_restore = self.net.get_variables_to_restore(variables, var_keep_dic)
