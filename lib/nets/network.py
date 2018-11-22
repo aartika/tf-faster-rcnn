@@ -355,6 +355,7 @@ class Network(object):
     if is_training:
       all_rois, all_roi_scores = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
       all_rois = tf.Print(all_rois, ['all_rois shape', tf.shape(all_rois)])
+      all_rois, _ = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
       rpn_labels = self._anchor_target_layer(rpn_cls_score, "anchor")
       # Try to have a deterministic order for the computing graph, for reproducibility
       with tf.control_dependencies([rpn_labels]):
@@ -407,7 +408,7 @@ class Network(object):
     img_cls_weights = tf.concat([img_cls_score_weights, img_region_score_weights], axis=0)
     cls_score_weights = slim.fully_connected(img_cls_score_weights, 
                                         4096*self._num_classes, 
-                                        #weights_initializer=initializer,
+                                        weights_initializer=initializer,
                                         trainable=is_training,
                                         activation_fn=None, scope='tranfer_fn_cls')
     cls_score_weights = tf.reshape(cls_score_weights, [4096, self._num_classes])
@@ -424,7 +425,7 @@ class Network(object):
 
     bbox_pred_weights = slim.fully_connected(img_cls_score_weights, 
                                         4096*self._num_classes*4, 
-                                        #weights_initializer=initializer,
+                                        weights_initializer=initializer,
                                         trainable=is_training,
                                         activation_fn=None, scope='tranfer_fn_bbox')
     bbox_pred_weights = tf.reshape(bbox_pred_weights, [4096, self._num_classes*4])
