@@ -403,15 +403,16 @@ class Network(object):
     img_region_score_weights = [v for v in tf.trainable_variables() if "img_region_score/weights" in v.name][0]
     img_cls_score_weights = tf.stop_gradient(img_cls_score_weights)
     img_region_score_weights = tf.stop_gradient(img_region_score_weights)
-    img_cls_score_weights = tf.reshape(img_cls_score_weights, [1, tf.size(img_cls_score_weights)])
-    img_region_score_weights = tf.reshape(img_region_score_weights, [1, tf.size(img_region_score_weights)])
-    img_cls_weights = tf.concat([img_cls_score_weights, img_region_score_weights], axis=0)
-    cls_score_weights = slim.fully_connected(img_cls_score_weights, 
-                                        4096*self._num_classes, 
+    img_cls_score_weights = tf.transpose(img_cls_score_weights, [1, 0])
+    img_region_score_weights = tf.transpose(img_region_score_weights, [1, 0])
+    img_cls_weights = tf.concat([img_cls_score_weights, img_region_score_weights], axis=1)
+    print(img_cls_weights)
+    cls_score_weights = slim.fully_connected(img_cls_weights, 
+                                        4096, 
                                         weights_initializer=initializer,
                                         trainable=is_training,
                                         activation_fn=None, scope='tranfer_fn_cls')
-    cls_score_weights = tf.reshape(cls_score_weights, [4096, self._num_classes])
+    cls_score_weights = tf.transpose(cls_score_weights, [1, 0])
     cls_score = tf.matmul(fc7, cls_score_weights)
 
     # cls score old
@@ -423,12 +424,14 @@ class Network(object):
     cls_prob = self._softmax_layer(cls_score, "cls_prob")
     cls_pred = tf.argmax(cls_score, axis=1, name="cls_pred")
 
-    bbox_pred_weights = slim.fully_connected(img_cls_score_weights, 
-                                        4096*self._num_classes*4, 
+    bbox_pred_weights = slim.fully_connected(img_cls_weights, 
+                                        4096*4, 
                                         weights_initializer=initializer,
                                         trainable=is_training,
                                         activation_fn=None, scope='tranfer_fn_bbox')
-    bbox_pred_weights = tf.reshape(bbox_pred_weights, [4096, self._num_classes*4])
+    print(bbox_pred_weights)
+    bbox_pred_weights = tf.reshape(bbox_pred_weights, [self._num_classes*4, 4096])
+    bbox_pred_weights = tf.transpose(bbox_pred_weights, [1, 0])
     bbox_pred = tf.matmul(fc7, bbox_pred_weights)
 
     # bbox pred old

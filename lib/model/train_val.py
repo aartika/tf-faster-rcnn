@@ -121,6 +121,7 @@ class SolverWrapper(object):
       layers = self.net.create_architecture('TRAIN', self.imdb.num_classes, tag='default',
                                             anchor_scales=cfg.ANCHOR_SCALES,
                                             anchor_ratios=cfg.ANCHOR_RATIOS)
+      print(layers)
       # Define the loss
       loss = layers['total_loss']
       # Set learning rate and momentum
@@ -184,10 +185,11 @@ class SolverWrapper(object):
     # Fresh train directly from ImageNet weights
     print('Loading initial model weights from {:s}'.format(self.pretrained_model))
     variables = tf.global_variables()
+    print(variables)
     print('Loaded.')
     # Initialize all variables first
     print('Initializing variables...')
-    sess.run(tf.variables_initializer(variables, name='init'))
+    sess.run(tf.variables_initializer(variables, name='init'), options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE))
     print('Initialized variables.')
     var_keep_dic = self.get_variables_in_checkpoint_file(self.pretrained_model)
     # Get the variables to restore, ignoring the variables to fix
