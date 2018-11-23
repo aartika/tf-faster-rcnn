@@ -19,7 +19,7 @@ cfg = __C
 __C.TRAIN = edict()
 
 # Initial learning rate
-__C.TRAIN.LEARNING_RATE = 0.001
+__C.TRAIN.LEARNING_RATE = 0.0001
 
 # Momentum
 __C.TRAIN.MOMENTUM = 0.9
@@ -93,7 +93,7 @@ __C.TRAIN.BBOX_REG = True
 __C.TRAIN.BBOX_THRESH = 0.5
 
 # Iterations between snapshots
-__C.TRAIN.SNAPSHOT_ITERS = 5000
+__C.TRAIN.SNAPSHOT_ITERS = 1000
 
 # solver.prototxt specifies the snapshot path prefix, this adds an optional
 # infix to yield the path: <prefix>[_<infix>]_iters_XYZ.caffemodel
@@ -267,7 +267,7 @@ __C.MATLAB = 'matlab'
 __C.EXP_DIR = 'default'
 
 # Use GPU implementation of non-maximum suppression
-__C.USE_GPU_NMS = False 
+__C.USE_GPU_NMS = True 
 
 # Use an end-to-end tensorflow model.
 # Note: models in E2E tensorflow mode have only been tested in feed-forward mode,
