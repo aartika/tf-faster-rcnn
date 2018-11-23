@@ -316,12 +316,12 @@ class Network(object):
       image_cls_score = self._predictions['image_level_cls_score']
       #image_cls_score = np.zeros(self._num_classes)
       image_cls = self._gt_boxes[:, 4]
-      image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
+      #image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
       image_cls_target = np.zeros(self._num_classes)
       image_cls_target[:] = 1
 
       image_cls_loss = tf.reduce_mean(tf.log(image_cls_target * (image_cls_score - 0.5) + 0.5))
-      image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
+      #image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
 
       self._losses['cross_entropy'] = cross_entropy
       self._losses['loss_box'] = loss_box
@@ -354,13 +354,13 @@ class Network(object):
                                 padding='VALID', activation_fn=None, scope='rpn_bbox_pred')
     if is_training:
       all_rois, all_roi_scores = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
-      all_rois = tf.Print(all_rois, ['all_rois shape', tf.shape(all_rois)])
+      #all_rois = tf.Print(all_rois, ['all_rois shape', tf.shape(all_rois)])
       all_rois, _ = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
       rpn_labels = self._anchor_target_layer(rpn_cls_score, "anchor")
       # Try to have a deterministic order for the computing graph, for reproducibility
       with tf.control_dependencies([rpn_labels]):
         rois, roi_scores, keep_inds = self._proposal_target_layer(all_rois, all_roi_scores, "rpn_rois")
-        rois = tf.Print(rois, ['rois shape', tf.shape(all_rois)])
+        #rois = tf.Print(rois, ['rois shape', tf.shape(all_rois)])
     else:
       if cfg.TEST.MODE == 'nms':
         rois, _ = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")

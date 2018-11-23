@@ -45,9 +45,9 @@ def proposal_target_layer(rpn_rois, rpn_scores, gt_boxes, _num_classes):
     all_rois, all_scores, gt_boxes, fg_rois_per_image,
     rois_per_image, _num_classes)
 
-  print('rois shape before', rois.shape)
+  #print('rois shape before', rois.shape)
   rois = rois.reshape(-1, 5)
-  print('rois shape after', rois.shape)
+  #print('rois shape after', rois.shape)
   roi_scores = roi_scores.reshape(-1)
   labels = labels.reshape(-1, 1)
   bbox_targets = bbox_targets.reshape(-1, _num_classes * 4)
