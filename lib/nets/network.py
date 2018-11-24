@@ -356,7 +356,7 @@ class Network(object):
     if is_training:
       all_rois, all_roi_scores = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
       #all_rois = tf.Print(all_rois, ['all_rois shape', tf.shape(all_rois)])
-      all_rois, _ = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
+      #all_rois, _ = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
       rpn_labels = self._anchor_target_layer(rpn_cls_score, "anchor")
       # Try to have a deterministic order for the computing graph, for reproducibility
       with tf.control_dependencies([rpn_labels]):
