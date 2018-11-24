@@ -189,6 +189,7 @@ class Network(object):
         [rois, roi_scores, self._gt_boxes, self._num_classes],
         [tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.float32, tf.int64],
         name="proposal_target")
+      print('keep inds : {}'.format(keep_inds))
 
       rois.set_shape([cfg.TRAIN.BATCH_SIZE, 5])
       roi_scores.set_shape([cfg.TRAIN.BATCH_SIZE])
@@ -369,6 +370,8 @@ class Network(object):
         rois, _ = self._proposal_top_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
       else:
         raise NotImplementedError
+      all_rois = rois
+      keep_inds = tf.range(0, tf.shape(rois)[0])
 
     self._predictions["rpn_cls_score"] = rpn_cls_score
     self._predictions["rpn_cls_score_reshape"] = rpn_cls_score_reshape
@@ -400,8 +403,8 @@ class Network(object):
     return image_cls_score 
 
   def _region_classification(self, fc7, is_training, initializer, initializer_bbox):
-    img_cls_score_weights = [v for v in tf.trainable_variables() if "img_cls_score/weights" in v.name][0]
-    img_region_score_weights = [v for v in tf.trainable_variables() if "img_region_score/weights" in v.name][0]
+    img_cls_score_weights = [v for v in tf.global_variables() if "img_cls_score/weights" in v.name][0]
+    img_region_score_weights = [v for v in tf.global_variables() if "img_region_score/weights" in v.name][0]
     img_cls_score_weights = tf.stop_gradient(img_cls_score_weights)
     img_region_score_weights = tf.stop_gradient(img_region_score_weights)
     img_cls_score_weights = tf.transpose(img_cls_score_weights, [1, 0])
