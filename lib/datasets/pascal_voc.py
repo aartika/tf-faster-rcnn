@@ -40,6 +40,7 @@ class pascal_voc(imdb):
                      'motorbike', 'person', 'pottedplant',
                      'sheep', 'sofa', 'train', 'tvmonitor')
     self._class_to_ind = dict(list(zip(self.classes, list(range(self.num_classes)))))
+    self._held_classes = [self._class_to_ind[cls] for cls in ['cow', 'sheep', 'bus', 'boat', 'diningtable']]
     self._image_ext = '.jpg'
     self._image_index = self._load_image_set_index()
     # Default to roidb handler
@@ -175,11 +176,16 @@ class pascal_voc(imdb):
       gt_classes[ix] = cls
       overlaps[ix, cls] = 1.0
       seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
-
+    im_labels = np.unique(gt_classes)
     overlaps = scipy.sparse.csr_matrix(overlaps)
 
+    if len(set(gt_classes).intersection(set(self._held_classes))) > 0:
+        print('Found classes : {}, skipped due to intersection with held classes : {}'.format(gt_classes, self._held_classes))
+        boxes = np.array([[0, 0, 0, 0]])
+        gt_classes = np.array([-1])
     return {'boxes': boxes,
             'gt_classes': gt_classes,
+            'im_labels': im_labels,
             'gt_overlaps': overlaps,
             'flipped': False,
             'seg_areas': seg_areas}
