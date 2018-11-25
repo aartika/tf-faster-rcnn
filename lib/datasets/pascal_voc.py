@@ -40,6 +40,8 @@ class pascal_voc(imdb):
                      'motorbike', 'person', 'pottedplant',
                      'sheep', 'sofa', 'train', 'tvmonitor')
     self._class_to_ind = dict(list(zip(self.classes, list(range(self.num_classes)))))
+    #self._held_classes = [self._class_to_ind[cls] for cls in ['cow', 'sheep', 'bus', 'boat', 'diningtable']]
+    self._held_classes = ['cow', 'sheep', 'bus', 'boat', 'diningtable']
     self._image_ext = '.jpg'
     self._image_index = self._load_image_set_index()
     # Default to roidb handler
@@ -87,7 +89,22 @@ class pascal_voc(imdb):
       'Path does not exist: {}'.format(image_set_file)
     with open(image_set_file) as f:
       image_index = [x.strip() for x in f.readlines()]
-    return image_index
+    held_class_idxs = set()
+    if self._image_set != 'test':
+        for cls in self._held_classes: 
+            held_class_file = os.path.join(self._data_path, 'ImageSets', 'Main',
+                                      cls + '_' + self._image_set + '.txt')
+            with open(held_class_file) as f:
+                cls_index = [x.strip() for x in f.readlines()]
+                cls_index = list(filter(lambda x: x.split()[1] == '1', cls_index))
+                cls_index = [x.split()[0] for x in cls_index]
+                held_class_idxs.update(cls_index)
+    #import ipdb; ipdb.set_trace()
+    weak_index = list(set(image_index) - held_class_idxs)
+    print('all trainval : {}'.format(len(image_index)))
+    print('held class : {}'.format(len(held_class_idxs)))
+    print('weak trainval : {}'.format(len(weak_index)))
+    return weak_index 
 
   def _get_default_path(self):
     """
@@ -113,6 +130,10 @@ class pascal_voc(imdb):
 
     gt_roidb = [self._load_pascal_annotation(index)
                 for index in self.image_index]
+    #print('gt_roidb len before : {}'.format(len(gt_roidb)))
+    #gt_roidb = list(filter(lambda entry: len(set(entry['gt_classes']).intersection(set(self._held_classes))) == 0, gt_roidb))
+    #print('gt_roidb len after : {}'.format(len(gt_roidb)))
+
     with open(cache_file, 'wb') as fid:
       pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
     print('wrote gt roidb to {}'.format(cache_file))
@@ -175,14 +196,24 @@ class pascal_voc(imdb):
       gt_classes[ix] = cls
       overlaps[ix, cls] = 1.0
       seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
+      labels = set(gt_classes)
 
     overlaps = scipy.sparse.csr_matrix(overlaps)
+    #import ipdb; ipdb.set_trace()
+    #print('gt_classes : {}'.format(set(gt_classes)))
+
+    #raise 
+    #if len(set(self._held_classes).intersection(set(gt_classes))) > 0:
+    #    print('Found held class. Setting boxes to None. Held classes : {}'.format(self._held_classes))
+    #    boxes = np.array([[0, 0, 0, 0]]) 
+    #    gt_classes = np.array([-1])
 
     return {'boxes': boxes,
             'gt_classes': gt_classes,
             'gt_overlaps': overlaps,
             'flipped': False,
-            'seg_areas': seg_areas}
+            'seg_areas': seg_areas, 
+            'labels': labels}
 
   def _get_comp_id(self):
     comp_id = (self._comp_id + '_' + self._salt if self.config['use_salt']
