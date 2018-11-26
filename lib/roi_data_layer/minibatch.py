@@ -68,6 +68,7 @@ def _get_image_blob(roidb, scale_inds):
                     cfg.TRAIN.MAX_SIZE)
     im_scales.append(im_scale)
     processed_ims.append(im)
+    #import ipdb; ipdb.set_trace()
     im_labels[i][roidb[i]['im_labels']] = 1
 
   # Create a blob to hold the input images

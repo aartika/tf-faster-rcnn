@@ -239,17 +239,21 @@ class imdb(object):
         'gt_classes': np.zeros((num_boxes,), dtype=np.int32),
         'gt_overlaps': overlaps,
         'flipped': False,
+        'im_labels': gt_roidb[i]['im_labels'],
         'seg_areas': np.zeros((num_boxes,), dtype=np.float32),
       })
     return roidb
 
   @staticmethod
   def merge_roidbs(a, b):
+    import ipdb; ipdb.set_trace()
     assert len(a) == len(b)
     for i in range(len(a)):
       a[i]['boxes'] = np.vstack((a[i]['boxes'], b[i]['boxes']))
       a[i]['gt_classes'] = np.hstack((a[i]['gt_classes'],
                                       b[i]['gt_classes']))
+      a[i]['im_labels'] = np.hstack((a[i]['im_labels'],
+                                      b[i]['im_labels']))
       a[i]['gt_overlaps'] = scipy.sparse.vstack([a[i]['gt_overlaps'],
                                                  b[i]['gt_overlaps']])
       a[i]['seg_areas'] = np.hstack((a[i]['seg_areas'],
