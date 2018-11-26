@@ -286,7 +286,9 @@ class Network(object):
     add_image_cls_loss = lambda: self._add_image_cls_loss(sigma_rpn)
     add_all_losses = lambda: self._add_all_losses(sigma_rpn)
     cond1 = tf.equal(tf.shape(self._gt_boxes)[0], 1)
-    cond2 = tf.equal(tf.reduce_mean(self._gt_boxes[0:4]), -1)
+    gt_class = tf.reduce_mean(self._gt_boxes[0, 4])
+    cond2 = tf.equal(gt_class, -1)
+    #cond1 = tf.Print(cond1, ['cond1 cond2', cond1, cond2])
     print(cond1)
     print(cond2)
     total_loss, cross_entropy, loss_box, rpn_cross_entropy, rpn_loss_box, image_cls_loss = tf.cond(tf.math.logical_and(cond1, cond2), 
@@ -323,6 +325,7 @@ class Network(object):
       cls_score = self._predictions["cls_score"]
       label = tf.reshape(self._proposal_targets["labels"], [-1])
       cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=cls_score, labels=label))
+      #cross_entropy = tf.Print(cross_entropy, ['cross_entropy', cross_entropy, 'gt_classes', self._gt_boxes[:, 4]])
 
       # RCNN, bbox loss
       bbox_pred = self._predictions['bbox_pred']
@@ -337,11 +340,11 @@ class Network(object):
       image_cls = self._gt_boxes[:, 4]
       #image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
       image_cls_target = self._im_labels[0]
-      image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
+      #image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
 
       image_cls_loss = tf.losses.log_loss(image_cls_target, image_cls_score)
       #image_cls_loss = tf.reduce_mean(tf.log(image_cls_target * (image_cls_score - 0.5) + 0.5))
-      image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
+      #image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
 
       #self._losses['cross_entropy'] = cross_entropy
       #self._losses['loss_box'] = loss_box
@@ -366,10 +369,10 @@ class Network(object):
       image_cls = self._gt_boxes[:, 4]
       #image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
       image_cls_target = self._im_labels[0]
-      image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
+      #image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
 
       image_cls_loss = tf.losses.log_loss(image_cls_target, image_cls_score)
-      image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
+      #image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
 
       #self._losses['cross_entropy'] = 0.0
       #self._losses['loss_box'] = 0.0
