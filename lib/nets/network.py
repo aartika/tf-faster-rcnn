@@ -337,6 +337,7 @@ class Network(object):
       image_cls = self._gt_boxes[:, 4]
       #image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
       image_cls_target = self._im_labels[0]
+      image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
 
       image_cls_loss = tf.losses.log_loss(image_cls_target, image_cls_score)
       #image_cls_loss = tf.reduce_mean(tf.log(image_cls_target * (image_cls_score - 0.5) + 0.5))
@@ -365,6 +366,7 @@ class Network(object):
       image_cls = self._gt_boxes[:, 4]
       #image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
       image_cls_target = self._im_labels[0]
+      image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
 
       image_cls_loss = tf.losses.log_loss(image_cls_target, image_cls_score)
       image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
