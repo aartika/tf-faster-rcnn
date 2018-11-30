@@ -20,6 +20,8 @@ __C.TRAIN = edict()
 
 __C.TRAIN.SUPERVISION = 'weak'
 
+__C.TRAIN.MODEL = 'transfer'
+
 # Initial learning rate
 __C.TRAIN.LEARNING_RATE = 0.001
 
