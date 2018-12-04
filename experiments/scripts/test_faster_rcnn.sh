@@ -18,7 +18,7 @@ case ${DATASET} in
   pascal_voc)
     TRAIN_IMDB="voc_2007_trainval"
     TEST_IMDB="voc_2007_test"
-    ITERS=31000
+    ITERS=34000
     ANCHORS="[8,16,32]"
     RATIOS="[0.5,1,2]"
     ;;
@@ -55,7 +55,7 @@ fi
 set -x
 
 if [[ ! -z  ${EXTRA_ARGS_SLUG}  ]]; then
-  CUDA_VISIBLE_DEVICES=${GPU_ID} time python ./tools/test_net.py \
+  CUDA_VISIBLE_DEVICES=${GPU_ID} python ./tools/test_net.py \
     --imdb ${TEST_IMDB} \
     --model ${NET_FINAL} \
     --cfg experiments/cfgs/${NET}.yml \
@@ -64,7 +64,7 @@ if [[ ! -z  ${EXTRA_ARGS_SLUG}  ]]; then
     --set ANCHOR_SCALES ${ANCHORS} ANCHOR_RATIOS ${RATIOS} \
           ${EXTRA_ARGS}
 else
-  CUDA_VISIBLE_DEVICES=${GPU_ID} time python ./tools/test_net.py \
+  CUDA_VISIBLE_DEVICES=${GPU_ID} python ./tools/test_net.py \
     --imdb ${TEST_IMDB} \
     --model ${NET_FINAL} \
     --cfg experiments/cfgs/${NET}.yml \

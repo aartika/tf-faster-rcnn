@@ -22,6 +22,8 @@ from model.nms_wrapper import nms
 
 from utils.timer import Timer
 import tensorflow as tf
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import os, cv2
@@ -37,7 +39,7 @@ CLASSES = ('__background__',
            'motorbike', 'person', 'pottedplant',
            'sheep', 'sofa', 'train', 'tvmonitor')
 
-NETS = {'vgg16': ('vgg16_faster_rcnn_iter_70000.ckpt',),'res101': ('res101_faster_rcnn_iter_110000.ckpt',)}
+NETS = {'vgg16': ('vgg16_faster_rcnn_iter_39000.ckpt',),'res101': ('res101_faster_rcnn_iter_110000.ckpt',)}
 DATASETS= {'pascal_voc': ('voc_2007_trainval',),'pascal_voc_0712': ('voc_2007_trainval+voc_2012_trainval',)}
 
 def vis_detections(im, class_name, dets, thresh=0.5):
@@ -117,7 +119,7 @@ if __name__ == '__main__':
     # model path
     demonet = args.demo_net
     dataset = args.dataset
-    tfmodel = os.path.join('output', demonet, DATASETS[dataset][0], 'default',
+    tfmodel = os.path.join('output', demonet, DATASETS[dataset][0], 'TRAIN.SUPERVISION_weak_TRAIN.MODEL_transfer',
                               NETS[demonet][0])
 
 
@@ -145,11 +147,10 @@ if __name__ == '__main__':
 
     print('Loaded network {:s}'.format(tfmodel))
 
-    im_names = ['000456.jpg', '000542.jpg', '001150.jpg',
-                '001763.jpg', '004545.jpg']
+    im_names = ['000054.jpg'] 
     for im_name in im_names:
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Demo for data/demo/{}'.format(im_name))
         demo(sess, net, im_name)
 
-    plt.show()
+    plt.savefig('demo.png')

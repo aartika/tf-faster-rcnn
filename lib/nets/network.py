@@ -286,7 +286,9 @@ class Network(object):
     add_image_cls_loss = lambda: self._add_image_cls_loss(sigma_rpn)
     add_all_losses = lambda: self._add_all_losses(sigma_rpn)
     cond1 = tf.equal(tf.shape(self._gt_boxes)[0], 1)
-    cond2 = tf.equal(tf.reduce_mean(self._gt_boxes[0:4]), -1)
+    gt_class = tf.reduce_mean(self._gt_boxes[0, 4])
+    cond2 = tf.equal(gt_class, -1)
+    #cond1 = tf.Print(cond1, ['cond1 cond2', cond1, cond2])
     print(cond1)
     print(cond2)
     total_loss, cross_entropy, loss_box, rpn_cross_entropy, rpn_loss_box, image_cls_loss = tf.cond(tf.math.logical_and(cond1, cond2), 
@@ -323,6 +325,7 @@ class Network(object):
       cls_score = self._predictions["cls_score"]
       label = tf.reshape(self._proposal_targets["labels"], [-1])
       cross_entropy = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=cls_score, labels=label))
+      #cross_entropy = tf.Print(cross_entropy, ['cross_entropy', cross_entropy, 'gt_classes', self._gt_boxes[:, 4]])
 
       # RCNN, bbox loss
       bbox_pred = self._predictions['bbox_pred']
@@ -337,11 +340,11 @@ class Network(object):
       image_cls = self._gt_boxes[:, 4]
       #image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
       image_cls_target = self._im_labels[0]
-      image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4], 'im_labels', self._im_labels])
+      #image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
 
       image_cls_loss = tf.losses.log_loss(image_cls_target, image_cls_score)
       #image_cls_loss = tf.reduce_mean(tf.log(image_cls_target * (image_cls_score - 0.5) + 0.5))
-      image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
+      #image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
 
       #self._losses['cross_entropy'] = cross_entropy
       #self._losses['loss_box'] = loss_box
@@ -366,10 +369,10 @@ class Network(object):
       image_cls = self._gt_boxes[:, 4]
       #image_cls = tf.Print(image_cls, ['gt_boxes classes', image_cls])
       image_cls_target = self._im_labels[0]
-      image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
+      #image_cls_target = tf.Print(image_cls_target, ['image_cls_target', image_cls_target, 'gt_classes', self._gt_boxes[:, 4]])
 
       image_cls_loss = tf.losses.log_loss(image_cls_target, image_cls_score)
-      image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
+      #image_cls_loss = tf.Print(image_cls_loss, ['image_cls_loss', image_cls_loss])
 
       #self._losses['cross_entropy'] = 0.0
       #self._losses['loss_box'] = 0.0
@@ -453,18 +456,21 @@ class Network(object):
     img_cls_score_weights = [v for v in tf.global_variables() if "img_cls_score/weights" in v.name][0]
     img_region_score_weights = [v for v in tf.global_variables() if "img_region_score/weights" in v.name][0]
     img_cls_score_weights = tf.stop_gradient(img_cls_score_weights)
+    cls_score_weights = img_cls_score_weights
     img_region_score_weights = tf.stop_gradient(img_region_score_weights)
     img_cls_score_weights = tf.transpose(img_cls_score_weights, [1, 0])
     img_region_score_weights = tf.transpose(img_region_score_weights, [1, 0])
     img_cls_weights = tf.concat([img_cls_score_weights, img_region_score_weights], axis=1)
     print(img_cls_weights)
-    cls_score_weights = slim.fully_connected(img_cls_weights, 
-                                        4096, 
-                                        weights_initializer=initializer,
-                                        trainable=is_training,
-                                        activation_fn=None, scope='tranfer_fn_cls')
-    cls_score_weights = tf.transpose(cls_score_weights, [1, 0])
-    cls_score = tf.matmul(fc7, cls_score_weights)
+    #cls_score_weights = slim.fully_connected(img_cls_weights, 
+    #                                    4096, 
+    #                                    weights_initializer=initializer,
+    #                                    trainable=is_training,
+    #                                    activation_fn=tf.nn.relu, scope='tranfer_fn_cls')
+    #cls_score_weights = slim.dropout(cls_score_weights, keep_prob=0.5, is_training=is_training)
+    img_cls_score_biases = [v for v in tf.global_variables() if "img_cls_score/biases" in v.name][0]
+    #cls_score_weights = tf.transpose(cls_score_weights, [1, 0])
+    cls_score = tf.matmul(fc7, cls_score_weights) + img_cls_score_biases
 
     # cls score old
     #cls_score = slim.fully_connected(fc7, self._num_classes, 
@@ -479,7 +485,8 @@ class Network(object):
                                         4096*4, 
                                         weights_initializer=initializer,
                                         trainable=is_training,
-                                        activation_fn=None, scope='tranfer_fn_bbox')
+                                        activation_fn=tf.nn.relu, scope='tranfer_fn_bbox')
+    bbox_pred_weights = slim.dropout(bbox_pred_weights, keep_prob=1, is_training=is_training)
     print(bbox_pred_weights)
     bbox_pred_weights = tf.reshape(bbox_pred_weights, [self._num_classes*4, 4096])
     bbox_pred_weights = tf.transpose(bbox_pred_weights, [1, 0])
@@ -593,12 +600,13 @@ class Network(object):
     feed_dict = {self._image: image,
                  self._im_info: im_info}
 
-    cls_score, cls_prob, bbox_pred, rois = sess.run([self._predictions["cls_score"],
+    cls_score, cls_prob, bbox_pred, rois, image_cls_score = sess.run([self._predictions["cls_score"],
                                                      self._predictions['cls_prob'],
                                                      self._predictions['bbox_pred'],
-                                                     self._predictions['rois']],
+                                                     self._predictions['rois'],
+                                                     self._predictions['image_level_cls_score']],
                                                     feed_dict=feed_dict)
-    return cls_score, cls_prob, bbox_pred, rois
+    return cls_score, cls_prob, bbox_pred, rois, image_cls_score
 
   def get_summary(self, sess, blobs):
     feed_dict = {self._image: blobs['data'], self._im_info: blobs['im_info'],

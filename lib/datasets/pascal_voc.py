@@ -177,9 +177,10 @@ class pascal_voc(imdb):
       overlaps[ix, cls] = 1.0
       seg_areas[ix] = (x2 - x1 + 1) * (y2 - y1 + 1)
     im_labels = np.unique(gt_classes)
+    print('im_labels : {}'.format(im_labels))
     overlaps = scipy.sparse.csr_matrix(overlaps)
 
-    if len(set(gt_classes).intersection(set(self._held_classes))) > 0:
+    if self._image_set != 'test' and len(set(gt_classes).intersection(set(self._held_classes))) > 0:
         print('Found classes : {}, skipped due to intersection with held classes : {}'.format(gt_classes, self._held_classes))
         boxes = np.array([[0, 0, 0, 0]])
         gt_classes = np.array([-1])

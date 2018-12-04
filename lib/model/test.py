@@ -89,8 +89,12 @@ def im_detect(sess, net, im):
 
   im_blob = blobs['data']
   blobs['im_info'] = np.array([im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
+  #import ipdb; ipdb.set_trace()
+  #print(blobs['data'])
 
-  _, scores, bbox_pred, rois = net.test_image(sess, blobs['data'], blobs['im_info'])
+  _, scores, bbox_pred, rois, image_cls_score = net.test_image(sess, blobs['data'], blobs['im_info'])
+
+  #import ipdb; ipdb.set_trace()
   
   boxes = rois[:, 1:5] / im_scales[0]
   scores = np.reshape(scores, [scores.shape[0], -1])
@@ -150,6 +154,7 @@ def test_net(sess, net, imdb, weights_filename, max_per_image=100, thresh=0.):
   _t = {'im_detect' : Timer(), 'misc' : Timer()}
 
   for i in range(num_images):
+    print(imdb.image_path_at(i))
     im = cv2.imread(imdb.image_path_at(i))
 
     _t['im_detect'].tic()
