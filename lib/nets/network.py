@@ -486,7 +486,7 @@ class Network(object):
                                         weights_initializer=initializer,
                                         trainable=is_training,
                                         activation_fn=tf.nn.relu, scope='tranfer_fn_bbox')
-    bbox_pred_weights = slim.dropout(bbox_pred_weights, keep_prob=1, is_training=is_training)
+    bbox_pred_weights = slim.dropout(bbox_pred_weights, keep_prob=0.5, is_training=is_training)
     print(bbox_pred_weights)
     bbox_pred_weights = tf.reshape(bbox_pred_weights, [self._num_classes*4, 4096])
     bbox_pred_weights = tf.transpose(bbox_pred_weights, [1, 0])
