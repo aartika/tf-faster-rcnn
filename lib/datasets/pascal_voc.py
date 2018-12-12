@@ -40,7 +40,7 @@ class pascal_voc(imdb):
                      'motorbike', 'person', 'pottedplant',
                      'sheep', 'sofa', 'train', 'tvmonitor')
     self._class_to_ind = dict(list(zip(self.classes, list(range(self.num_classes)))))
-    self._held_classes = [self._class_to_ind[cls] for cls in ['cow', 'sheep', 'bus', 'boat', 'diningtable']]
+    self._held_classes = [self._class_to_ind[cls] for cls in ['horse', 'cat', 'train', 'aeroplane', 'motorbike']]
     self._image_ext = '.jpg'
     self._image_index = self._load_image_set_index()
     # Default to roidb handler
