@@ -481,11 +481,16 @@ class Network(object):
     cls_prob = self._softmax_layer(cls_score, "cls_prob")
     cls_pred = tf.argmax(cls_score, axis=1, name="cls_pred")
 
-    bbox_pred_weights = slim.fully_connected(img_cls_weights, 
+    layer_1 = slim.fully_connected(img_region_score_weights, 
                                         4096*4, 
                                         weights_initializer=initializer,
                                         trainable=is_training,
-                                        activation_fn=tf.nn.relu, scope='tranfer_fn_bbox')
+                                        activation_fn=tf.nn.relu, scope='tranfer_fn_bbox_1')
+    bbox_pred_weights = slim.fully_connected(layer_1, 
+                                        4096*4, 
+                                        weights_initializer=initializer,
+                                        trainable=is_training,
+                                        activation_fn=tf.nn.relu, scope='tranfer_fn_bbox_2')
     bbox_pred_weights = slim.dropout(bbox_pred_weights, keep_prob=0.5, is_training=is_training)
     print(bbox_pred_weights)
     bbox_pred_weights = tf.reshape(bbox_pred_weights, [self._num_classes*4, 4096])
